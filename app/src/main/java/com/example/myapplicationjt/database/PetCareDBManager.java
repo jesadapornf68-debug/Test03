@@ -10,6 +10,7 @@ import com.example.myapplicationjt.model.PetTrackingRecord;
 import com.example.myapplicationjt.model.User;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Singleton OOP Database Manager encapsulating all local SQLite database operations
@@ -61,6 +62,18 @@ public class PetCareDBManager {
         return sessionPrefs.getString(KEY_CURRENT_USER_EMAIL, "guest");
     }
 
+    public void seedDefaultPetsForUser(String email) {
+        // Do not auto-create default pets. Users create their own pets!
+    }
+
+    public void switchUserSession(String newEmail) {
+        if (newEmail != null && !newEmail.trim().isEmpty()) {
+            String cleanEmail = newEmail.trim().toLowerCase();
+            setLoggedIn(true, cleanEmail);
+            seedDefaultPetsForUser(cleanEmail);
+        }
+    }
+
     public void logout() {
         sessionPrefs.edit().putBoolean(KEY_IS_LOGGED_IN, false).apply();
     }
@@ -73,9 +86,14 @@ public class PetCareDBManager {
     public User loginUser(String email, String password) {
         User u = userDAO.login(email, password);
         if (u != null) {
-            setLoggedIn(true, email);
+            switchUserSession(email);
         }
         return u;
+    }
+
+    public boolean validateUser(String email, String password) {
+        if (email == null || email.equalsIgnoreCase("guest")) return true;
+        return userDAO.login(email, password) != null;
     }
 
     public List<User> getAllUsers() {
@@ -84,6 +102,10 @@ public class PetCareDBManager {
 
     public boolean saveHomeAddress(String email, String address) {
         return userDAO.updateAddress(email, address);
+    }
+
+    public boolean updateUserProfile(String email, String name, String password) {
+        return userDAO.updateUserProfile(email, name, password);
     }
 
     public String getHomeAddress(String email) {
@@ -140,5 +162,7 @@ public class PetCareDBManager {
         appointmentDAO.clearAll();
         trackingDAO.clearAll();
         sessionPrefs.edit().clear().apply();
+        context.getSharedPreferences("UserProfilePrefs", Context.MODE_PRIVATE).edit().clear().apply();
+        context.getSharedPreferences("PrivacyPrefs", Context.MODE_PRIVATE).edit().clear().apply();
     }
 }

@@ -23,7 +23,10 @@ public class UserDAO {
         cv.put(DatabaseHelper.COL_USER_NAME, user.getName());
         cv.put(DatabaseHelper.COL_USER_EMAIL, user.getEmail().toLowerCase());
         cv.put(DatabaseHelper.COL_USER_PASSWORD, user.getPassword());
-        cv.put(DatabaseHelper.COL_USER_ADDRESS, user.getAddress() != null ? user.getAddress() : "");
+        String address = (user.getAddress() != null && !user.getAddress().trim().isEmpty())
+                ? user.getAddress().trim()
+                : "ยังไม่ได้ระบุที่อยู่";
+        cv.put(DatabaseHelper.COL_USER_ADDRESS, address);
 
         long result = db.insertWithOnConflict(DatabaseHelper.TABLE_USERS, null, cv, SQLiteDatabase.CONFLICT_IGNORE);
         return result != -1;
@@ -60,6 +63,28 @@ public class UserDAO {
         SQLiteDatabase db = dbHelper.getWritableDatabase();
         ContentValues cv = new ContentValues();
         cv.put(DatabaseHelper.COL_USER_ADDRESS, address);
+
+        int rows = db.update(
+                DatabaseHelper.TABLE_USERS,
+                cv,
+                DatabaseHelper.COL_USER_EMAIL + "=?",
+                new String[]{email.toLowerCase().trim()}
+        );
+        return rows > 0;
+    }
+
+    public boolean updateUserProfile(String email, String name, String password) {
+        if (email == null || email.trim().isEmpty()) return false;
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        ContentValues cv = new ContentValues();
+        if (name != null && !name.trim().isEmpty()) {
+            cv.put(DatabaseHelper.COL_USER_NAME, name.trim());
+        }
+        if (password != null && !password.trim().isEmpty()) {
+            cv.put(DatabaseHelper.COL_USER_PASSWORD, password.trim());
+        }
+
+        if (cv.size() == 0) return false;
 
         int rows = db.update(
                 DatabaseHelper.TABLE_USERS,

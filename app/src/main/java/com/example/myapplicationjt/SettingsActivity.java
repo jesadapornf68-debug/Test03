@@ -40,14 +40,7 @@ public class SettingsActivity extends AppCompatActivity {
 
         MaterialButton btnLogout = findViewById(R.id.btnLogout);
         if (btnLogout != null) {
-            btnLogout.setOnClickListener(v -> {
-                dbManager.logout();
-                Toast.makeText(this, "ออกจากระบบสำเร็จ", Toast.LENGTH_SHORT).show();
-                Intent intent = new Intent(this, LoginActivity.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
-                startActivity(intent);
-                finish();
-            });
+            btnLogout.setOnClickListener(v -> startActivity(new Intent(this, LogoutActivity.class)));
         }
 
         MaterialButton btnViewRecords = findViewById(R.id.btnViewRecords);

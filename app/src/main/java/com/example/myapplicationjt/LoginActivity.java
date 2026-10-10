@@ -46,7 +46,12 @@ public class LoginActivity extends AppCompatActivity {
         TextInputEditText etPassword = findViewById(R.id.etPassword);
         MaterialButton btnLogin = findViewById(R.id.btnLogin);
         MaterialButton btnRegister = findViewById(R.id.btnRegister);
-        MaterialButton btnSkip = findViewById(R.id.btnSkip);
+        MaterialButton btnForgotPassword = findViewById(R.id.btnForgotPassword);
+        if (btnForgotPassword != null) {
+            btnForgotPassword.setOnClickListener(v -> {
+                startActivity(new Intent(this, ForgotPasswordActivity.class));
+            });
+        }
 
         if (etEmail != null) {
             etEmail.requestFocus();
@@ -79,13 +84,6 @@ public class LoginActivity extends AppCompatActivity {
 
         btnRegister.setOnClickListener(v -> {
             startActivity(new Intent(this, RegisterActivity.class));
-        });
-
-        btnSkip.setOnClickListener(v -> {
-            dbManager.setLoggedIn(true, "guest");
-            Toast.makeText(this, "เข้าสู่ระบบในโหมดผู้เยี่ยมชม", Toast.LENGTH_SHORT).show();
-            startActivity(new Intent(this, MainActivity.class));
-            finish();
         });
     }
 }

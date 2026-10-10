@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.View;
 import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -18,6 +19,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplicationjt.database.PetCareDBManager;
+import com.example.myapplicationjt.model.Appointment;
 import com.example.myapplicationjt.model.Pet;
 import com.google.android.material.card.MaterialCardView;
 
@@ -86,15 +88,8 @@ public class MainActivity extends AppCompatActivity {
             cardPetInfo.setOnClickListener(v -> startActivity(new Intent(this, ProfileActivity.class)));
         }
 
-        // Next Appointment Detail Button & Card
-        TextView btnApptDetail = findViewById(R.id.btnApptDetail);
-        if (btnApptDetail != null) {
-            btnApptDetail.setOnClickListener(v -> startActivity(new Intent(this, AppointmentActivity.class)));
-        }
-        MaterialCardView cardNextAppointment = findViewById(R.id.cardNextAppointment);
-        if (cardNextAppointment != null) {
-            cardNextAppointment.setOnClickListener(v -> startActivity(new Intent(this, AppointmentActivity.class)));
-        }
+        // Next Appointment Card & Details
+        loadLatestAppointment();
 
         // Vaccine Due Detail Button & Card
         TextView btnVaccineDetail = findViewById(R.id.btnVaccineDetail);
@@ -166,6 +161,85 @@ public class MainActivity extends AppCompatActivity {
         loadUserName();
         loadHomeAddress();
         loadPetProfile();
+        loadLatestAppointment();
+    }
+
+    private void loadLatestAppointment() {
+        TextView tvApptDateTime = findViewById(R.id.tvApptDateTime);
+        TextView tvApptHospital = findViewById(R.id.tvApptHospital);
+        TextView btnApptDetail = findViewById(R.id.btnApptDetail);
+        MaterialCardView cardNextAppointment = findViewById(R.id.cardNextAppointment);
+
+        TextView tvVaccineName = findViewById(R.id.tvVaccineName);
+        TextView tvVaccineDate = findViewById(R.id.tvVaccineDate);
+        TextView btnVaccineDetail = findViewById(R.id.btnVaccineDetail);
+        MaterialCardView cardVaccineDue = findViewById(R.id.cardVaccineDue);
+
+        List<Appointment> appts = dbManager.getAppointments(currentUserEmail);
+        if (appts != null && !appts.isEmpty()) {
+            final Appointment latest = appts.get(appts.size() - 1);
+
+            if (tvApptDateTime != null) {
+                tvApptDateTime.setText("🗓 " + latest.getDate() + "   " + latest.getTime() + " น.");
+            }
+            if (tvApptHospital != null) {
+                tvApptHospital.setText("📍 " + latest.getHospitalName());
+            }
+            if (btnApptDetail != null) {
+                btnApptDetail.setText("ดูรายละเอียด");
+            }
+
+            if (tvVaccineName != null) {
+                tvVaccineName.setText("ฉีดวัคซีน / " + latest.getPetName());
+            }
+            if (tvVaccineDate != null) {
+                tvVaccineDate.setText(latest.getDate());
+            }
+            if (btnVaccineDetail != null) {
+                btnVaccineDetail.setText("ดูรายละเอียด");
+            }
+
+            View.OnClickListener openDetailsListener = v -> {
+                Intent intent = new Intent(this, AppointmentSuccessActivity.class);
+                intent.putExtra("petName", latest.getPetName());
+                intent.putExtra("hospitalName", latest.getHospitalName());
+                intent.putExtra("date", latest.getDate());
+                intent.putExtra("time", latest.getTime());
+                startActivity(intent);
+            };
+
+            if (btnApptDetail != null) btnApptDetail.setOnClickListener(openDetailsListener);
+            if (cardNextAppointment != null) cardNextAppointment.setOnClickListener(openDetailsListener);
+            if (btnVaccineDetail != null) btnVaccineDetail.setOnClickListener(openDetailsListener);
+            if (cardVaccineDue != null) cardVaccineDue.setOnClickListener(openDetailsListener);
+
+        } else {
+            if (tvApptDateTime != null) {
+                tvApptDateTime.setText("ยังไม่มีนัดหมาย");
+            }
+            if (tvApptHospital != null) {
+                tvApptHospital.setText("แตะที่นี่เพื่อทำการนัดหมายล่วงหน้า");
+            }
+            if (btnApptDetail != null) {
+                btnApptDetail.setText("นัดหมาย");
+            }
+
+            if (tvVaccineName != null) {
+                tvVaccineName.setText("ยังไม่มีกำหนดฉีดวัคซีน");
+            }
+            if (tvVaccineDate != null) {
+                tvVaccineDate.setText("นัดหมายฉีดวัคซีนได้ที่ปุ่มนัดหมาย");
+            }
+            if (btnVaccineDetail != null) {
+                btnVaccineDetail.setText("นัดหมาย");
+            }
+
+            View.OnClickListener openBookListener = v -> startActivity(new Intent(this, AppointmentActivity.class));
+            if (btnApptDetail != null) btnApptDetail.setOnClickListener(openBookListener);
+            if (cardNextAppointment != null) cardNextAppointment.setOnClickListener(openBookListener);
+            if (btnVaccineDetail != null) btnVaccineDetail.setOnClickListener(openBookListener);
+            if (cardVaccineDue != null) cardVaccineDue.setOnClickListener(openBookListener);
+        }
     }
 
     private void loadUserName() {
@@ -197,25 +271,56 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadHomeAddress() {
         String savedAddress = dbManager.getHomeAddress(currentUserEmail);
-        if (savedAddress != null && !savedAddress.trim().isEmpty()) {
+        if (savedAddress != null && !savedAddress.trim().isEmpty() && !savedAddress.equals("ยังไม่ได้ระบุที่อยู่")) {
             tvSavedAddress.setText(savedAddress);
         } else {
-            tvSavedAddress.setText("99/9 หมู่ 7 ต.ท่าโพธิ์ อ.เมือง จ.พิษณุโลก 65000");
+            tvSavedAddress.setText("ยังไม่ได้ระบุที่อยู่บ้าน (กดแก้ไขเพื่อระบุ)");
         }
     }
 
     private void loadPetProfile() {
+        TextView tvPetName = findViewById(R.id.tvPetName);
+        TextView tvPetGender = findViewById(R.id.tvPetGender);
+        TextView tvPetBreedAge = findViewById(R.id.tvPetBreedAge);
+        TextView tvPetWeight = findViewById(R.id.tvPetWeight);
+        TextView tvPetStatus = findViewById(R.id.tvPetStatus);
+
         List<Pet> pets = dbManager.getPets(currentUserEmail);
         if (pets != null && !pets.isEmpty()) {
             Pet firstPet = pets.get(0);
-            TextView tvPetName = findViewById(R.id.tvPetName);
-            TextView tvPetBreedAge = findViewById(R.id.tvPetBreedAge);
 
-            if (tvPetName != null && firstPet.getPetName() != null && !firstPet.getPetName().isEmpty()) {
+            if (tvPetName != null) {
                 tvPetName.setText(firstPet.getPetName());
             }
-            if (tvPetBreedAge != null && firstPet.getPetBreed() != null && !firstPet.getPetBreed().isEmpty()) {
-                tvPetBreedAge.setText(firstPet.getPetBreed());
+            if (tvPetGender != null) {
+                tvPetGender.setText("♂");
+            }
+            if (tvPetBreedAge != null) {
+                String breed = firstPet.getPetBreed() != null && !firstPet.getPetBreed().isEmpty()
+                        ? firstPet.getPetBreed() : "สัตว์เลี้ยง";
+                tvPetBreedAge.setText(breed);
+            }
+            if (tvPetWeight != null) {
+                tvPetWeight.setText("น้ำหนัก 5.5 กก.");
+            }
+            if (tvPetStatus != null) {
+                tvPetStatus.setText("✚ สุขภาพปกติ");
+            }
+        } else {
+            if (tvPetName != null) {
+                tvPetName.setText("ยังไม่มีสัตว์เลี้ยง");
+            }
+            if (tvPetGender != null) {
+                tvPetGender.setText("");
+            }
+            if (tvPetBreedAge != null) {
+                tvPetBreedAge.setText("แตะที่นี่เพื่อเพิ่มสัตว์เลี้ยงตัวแรกของคุณ");
+            }
+            if (tvPetWeight != null) {
+                tvPetWeight.setText("");
+            }
+            if (tvPetStatus != null) {
+                tvPetStatus.setText("+ เพิ่มสัตว์เลี้ยง");
             }
         }
     }

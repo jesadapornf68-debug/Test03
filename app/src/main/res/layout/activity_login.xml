@@ -112,14 +112,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btnLogin" />
 
-    <!-- Skip / Guest Button -->
+    <!-- Forgot Password Button -->
     <com.google.android.material.button.MaterialButton
-        android:id="@+id/btnSkip"
+        android:id="@+id/btnForgotPassword"
         style="@style/Widget.Material3.Button.TextButton"
         android:layout_width="0dp"
-        android:layout_height="56dp"
+        android:layout_height="48dp"
         android:layout_marginTop="8dp"
-        android:text="ข้ามไปหน้าหลัก (Skip Login)"
+        android:text="ลืมรหัสผ่าน? (Forgot Password)"
+        android:textColor="#1E88E5"
         android:textSize="14sp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

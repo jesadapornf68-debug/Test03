@@ -3,9 +3,14 @@ package com.example.myapplicationjt;
 import android.Manifest;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Typeface;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.view.View;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -35,6 +40,16 @@ public class HospitalSearchActivity extends AppCompatActivity {
     private FusedLocationProviderClient fusedLocationClient;
     private final List<Hospital> hospitalList = new ArrayList<>();
 
+    // Selected filter values
+    private String selectedPet = "สุนัข";
+    private String selectedService = "ตรวจทั่วไป";
+    private String selectedDistance = "ใกล้ที่สุด";
+    private String searchQuery = "";
+
+    private MaterialCardView cardA, cardB, cardC;
+    private TextView tvNoHospitalFound;
+    private EditText etSearchHospital;
+
     private final ActivityResultLauncher<String> requestPermissionLauncher =
             registerForActivityResult(new ActivityResultContracts.RequestPermission(), isGranted -> {
                 if (isGranted) {
@@ -62,6 +77,12 @@ public class HospitalSearchActivity extends AppCompatActivity {
             btnBack.setOnClickListener(v -> finish());
         }
 
+        cardA = findViewById(R.id.cardHospitalA);
+        cardB = findViewById(R.id.cardHospitalB);
+        cardC = findViewById(R.id.cardHospitalC);
+        tvNoHospitalFound = findViewById(R.id.tvNoHospitalFound);
+        etSearchHospital = findViewById(R.id.etSearchHospital);
+
         // Initialize Hospital Models (Phitsanulok, Thailand)
         hospitalList.add(new Hospital("h1", "โรงพยาบาลสัตว์พิษณุโลก", "อ.เมือง จ.พิษณุโลก", "055-258123", 16.8260, 100.2600));
         hospitalList.add(new Hospital("h2", "โรงพยาบาลสัตว์มหาวิทยาลัยนเรศวร", "ม.นเรศวร จ.พิษณุโลก", "055-965000", 16.7320, 100.1930));
@@ -71,17 +92,12 @@ public class HospitalSearchActivity extends AppCompatActivity {
         checkLocationPermission();
 
         // 2. Hospital Cards Click Listeners
-        MaterialCardView cardA = findViewById(R.id.cardHospitalA);
         if (cardA != null) {
             cardA.setOnClickListener(v -> openGoogleMapsDirections("โรงพยาบาลสัตว์พิษณุโลก", 16.8260, 100.2600));
         }
-
-        MaterialCardView cardB = findViewById(R.id.cardHospitalB);
         if (cardB != null) {
             cardB.setOnClickListener(v -> openGoogleMapsDirections("โรงพยาบาลสัตว์มหาวิทยาลัยนเรศวร", 16.7320, 100.1930));
         }
-
-        MaterialCardView cardC = findViewById(R.id.cardHospitalC);
         if (cardC != null) {
             cardC.setOnClickListener(v -> openGoogleMapsDirections("โรงพยาบาลสัตว์เอกอารักษ์ พิษณุโลก", 16.8150, 100.2700));
         }
@@ -102,10 +118,22 @@ public class HospitalSearchActivity extends AppCompatActivity {
             });
         }
 
-        // 4. Setup Filter Chip Clicks
+        // 4. Setup Search TextWatcher
+        if (etSearchHospital != null) {
+            etSearchHospital.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+                @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                    searchQuery = s.toString().trim().toLowerCase();
+                    applyFilters();
+                }
+                @Override public void afterTextChanged(Editable s) {}
+            });
+        }
+
+        // 5. Setup Filter Chip Clicks & Interactions
         setupFilterChips();
 
-        // 5. Bottom Navigation Listeners
+        // 6. Bottom Navigation Listeners
         LinearLayout navHome = findViewById(R.id.navHome);
         if (navHome != null) {
             navHome.setOnClickListener(v -> {
@@ -145,28 +173,138 @@ public class HospitalSearchActivity extends AppCompatActivity {
     }
 
     private void setupFilterChips() {
-        int[] petChipIds = new int[]{R.id.chipDog, R.id.chipCat, R.id.chipRabbit, R.id.chipBird};
-        for (int id : petChipIds) {
-            TextView tv = findViewById(id);
+        // Pet Type Chips
+        int[] petIds = new int[]{R.id.chipDog, R.id.chipCat, R.id.chipRabbit, R.id.chipBird};
+        String[] petNames = new String[]{"สุนัข", "แมว", "กระต่าย", "นก"};
+
+        for (int i = 0; i < petIds.length; i++) {
+            final int index = i;
+            TextView tv = findViewById(petIds[i]);
             if (tv != null) {
-                tv.setOnClickListener(v -> Toast.makeText(this, "กรองตาม: " + tv.getText(), Toast.LENGTH_SHORT).show());
+                tv.setOnClickListener(v -> {
+                    selectedPet = petNames[index];
+                    updatePetChipStyles(petIds, index);
+                    applyFilters();
+                });
             }
         }
 
-        int[] serviceChipIds = new int[]{R.id.chipCheckup, R.id.chipVaccine, R.id.chipSurgery, R.id.chipXray, R.id.chipBlood, R.id.chipMoreServices};
-        for (int id : serviceChipIds) {
-            TextView tv = findViewById(id);
+        // Service Chips
+        int[] serviceIds = new int[]{R.id.chipCheckup, R.id.chipVaccine, R.id.chipSurgery, R.id.chipXray, R.id.chipBlood, R.id.chipMoreServices};
+        String[] serviceNames = new String[]{"ตรวจทั่วไป", "ฉีดวัคซีน", "ผ่าตัด", "X-ray", "ตรวจเลือด", "เพิ่มเติม ˅"};
+
+        for (int i = 0; i < serviceIds.length; i++) {
+            final int index = i;
+            TextView tv = findViewById(serviceIds[i]);
             if (tv != null) {
-                tv.setOnClickListener(v -> Toast.makeText(this, "กรองตามบริการ: " + tv.getText(), Toast.LENGTH_SHORT).show());
+                tv.setOnClickListener(v -> {
+                    selectedService = serviceNames[index];
+                    updateServiceChipStyles(serviceIds, index);
+                    applyFilters();
+                });
             }
         }
 
-        int[] distChipIds = new int[]{R.id.chipNearest, R.id.chip5km, R.id.chip10km, R.id.chip20km, R.id.chip15km};
-        for (int id : distChipIds) {
-            TextView tv = findViewById(id);
+        // Distance Chips
+        int[] distIds = new int[]{R.id.chipNearest, R.id.chip5km, R.id.chip10km, R.id.chip20km, R.id.chip15km};
+        String[] distNames = new String[]{"ใกล้ที่สุด", "5 กม.", "10 กม.", "20 กม.", "30 กม."};
+
+        for (int i = 0; i < distIds.length; i++) {
+            final int index = i;
+            TextView tv = findViewById(distIds[i]);
             if (tv != null) {
-                tv.setOnClickListener(v -> Toast.makeText(this, "ระยะทาง: " + tv.getText(), Toast.LENGTH_SHORT).show());
+                tv.setOnClickListener(v -> {
+                    selectedDistance = distNames[index];
+                    updateDistanceChipStyles(distIds, index);
+                    applyFilters();
+                });
             }
+        }
+    }
+
+    private void updatePetChipStyles(int[] chipIds, int selectedIndex) {
+        for (int i = 0; i < chipIds.length; i++) {
+            TextView tv = findViewById(chipIds[i]);
+            if (tv != null) {
+                if (i == selectedIndex) {
+                    tv.setBackgroundColor(0xFF1E88E5);
+                    tv.setTextColor(0xFFFFFFFF);
+                    tv.setTypeface(null, Typeface.BOLD);
+                } else {
+                    tv.setBackgroundColor(0xFFF5F7FA);
+                    tv.setTextColor(0xFF37474F);
+                    tv.setTypeface(null, Typeface.NORMAL);
+                }
+            }
+        }
+    }
+
+    private void updateServiceChipStyles(int[] chipIds, int selectedIndex) {
+        for (int i = 0; i < chipIds.length; i++) {
+            TextView tv = findViewById(chipIds[i]);
+            if (tv != null) {
+                if (i == selectedIndex) {
+                    tv.setBackgroundColor(0xFFE3F2FD);
+                    tv.setTextColor(0xFF1E88E5);
+                    tv.setTypeface(null, Typeface.BOLD);
+                } else {
+                    tv.setBackgroundColor(0xFFF5F7FA);
+                    tv.setTextColor(0xFF37474F);
+                    tv.setTypeface(null, Typeface.NORMAL);
+                }
+            }
+        }
+    }
+
+    private void updateDistanceChipStyles(int[] chipIds, int selectedIndex) {
+        for (int i = 0; i < chipIds.length; i++) {
+            TextView tv = findViewById(chipIds[i]);
+            if (tv != null) {
+                if (i == selectedIndex) {
+                    tv.setBackgroundColor(0xFF1E88E5);
+                    tv.setTextColor(0xFFFFFFFF);
+                    tv.setTypeface(null, Typeface.BOLD);
+                } else {
+                    tv.setBackgroundColor(0xFFF5F7FA);
+                    tv.setTextColor(0xFF37474F);
+                    tv.setTypeface(null, Typeface.NORMAL);
+                }
+            }
+        }
+    }
+
+    private void applyFilters() {
+        boolean matchA = true;
+        boolean matchB = true;
+        boolean matchC = true;
+
+        // 1. Search Query Match
+        if (!searchQuery.isEmpty()) {
+            matchA = "โรงพยาบาลสัตว์พิษณุโลก".toLowerCase().contains(searchQuery);
+            matchB = "โรงพยาบาลสัตว์มหาวิทยาลัยนเรศวร".toLowerCase().contains(searchQuery);
+            matchC = "โรงพยาบาลสัตว์เอกอารักษ์ พิษณุโลก".toLowerCase().contains(searchQuery);
+        }
+
+        // 2. Pet Filter Match
+        if (selectedPet.equals("นก")) {
+            matchA = false;
+            matchC = false; // Only Naresuan University supports Birds in model
+        } else if (selectedPet.equals("กระต่าย")) {
+            matchC = false;
+        }
+
+        // 3. Service Filter Match
+        if (selectedService.equals("ผ่าตัด") || selectedService.equals("X-ray")) {
+            matchC = false; // Hospital A and B have full surgery & X-ray facilities
+        }
+
+        if (cardA != null) cardA.setVisibility(matchA ? View.VISIBLE : View.GONE);
+        if (cardB != null) cardB.setVisibility(matchB ? View.VISIBLE : View.GONE);
+        if (cardC != null) cardC.setVisibility(matchC ? View.VISIBLE : View.GONE);
+
+        int visibleCount = (matchA ? 1 : 0) + (matchB ? 1 : 0) + (matchC ? 1 : 0);
+        if (tvNoHospitalFound != null) {
+            tvNoHospitalFound.setVisibility(visibleCount == 0 ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -184,7 +322,6 @@ public class HospitalSearchActivity extends AppCompatActivity {
                 if (location != null && location.getLongitude() > 90.0) {
                     updateDistances(location.getLatitude(), location.getLongitude());
                 } else {
-                    // Force/fallback to Phitsanulok City Center, Thailand (16.8211, 100.2659)
                     updateDistances(16.8211, 100.2659);
                 }
             });

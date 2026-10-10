@@ -1,12 +1,9 @@
 package com.example.myapplicationjt;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Typeface;
-import android.net.Uri;
 import android.os.Bundle;
-import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -21,32 +18,28 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import com.example.myapplicationjt.database.PetCareDBManager;
-import com.example.myapplicationjt.model.PetTrackingRecord;
+import com.example.myapplicationjt.model.Pet;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
-import com.google.android.material.appbar.MaterialToolbar;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.card.MaterialCardView;
-import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.switchmaterial.SwitchMaterial;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 public class PetTrackingActivity extends AppCompatActivity {
 
-    private TextInputEditText etPetName;
-    private TextInputEditText etNote;
-    private MaterialButton statusButton;
-    private LinearLayout recordsContainer;
-
-    private String selectedStatus = "อยู่กับเจ้าของ";
-    private Double currentLat = null;
-    private Double currentLon = null;
-
+    private FusedLocationProviderClient fusedLocationClient;
     private PetCareDBManager dbManager;
+
+    private String selectedPetName = "NongJ";
+    private TextView tvPetNameTop;
+    private TextView tvPetNameStatus;
+    private TextView tvLastUpdated;
+    private TextView tvDistanceBadge;
 
     private final ActivityResultLauncher<String[]> requestLocationPermission =
             registerForActivityResult(new ActivityResultContracts.RequestMultiplePermissions(), result -> {
@@ -55,9 +48,9 @@ public class PetTrackingActivity extends AppCompatActivity {
                 boolean granted = (fine != null && fine) || (coarse != null && coarse);
 
                 if (granted) {
-                    getCurrentLocation();
+                    fetchLocation();
                 } else {
-                    Toast.makeText(this, "ต้องอนุญาตตำแหน่งเพื่อบันทึกพิกัดสัตว์เลี้ยง", Toast.LENGTH_LONG).show();
+                    Toast.makeText(this, "ใช้ตำแหน่งเริ่มต้น (พิษณุโลก)", Toast.LENGTH_SHORT).show();
                 }
             });
 
@@ -68,82 +61,104 @@ public class PetTrackingActivity extends AppCompatActivity {
         setContentView(R.layout.activity_pet_tracking);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets bars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
             return insets;
         });
 
-        MaterialToolbar toolbar = findViewById(R.id.topToolbar);
-        if (toolbar != null) {
-            toolbar.setNavigationOnClickListener(v -> finish());
-        }
-
         dbManager = PetCareDBManager.getInstance(this);
 
-        etPetName = findViewById(R.id.etTrackingPetName);
-        etNote = findViewById(R.id.etTrackingNote);
-        statusButton = findViewById(R.id.btnTrackingStatus);
-        recordsContainer = findViewById(R.id.trackingRecordsContainer);
-
-        if (statusButton != null) {
-            statusButton.setOnClickListener(v -> chooseStatus());
+        // 1. Back Button
+        ImageView btnBack = findViewById(R.id.btnBack);
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
         }
 
-        MaterialButton btnGetLocation = findViewById(R.id.btnGetLocation);
-        if (btnGetLocation != null) {
-            btnGetLocation.setOnClickListener(v -> checkLocationPermission());
+        tvPetNameTop = findViewById(R.id.tvPetNameTop);
+        tvPetNameStatus = findViewById(R.id.tvPetNameStatus);
+        tvLastUpdated = findViewById(R.id.tvLastUpdated);
+        tvDistanceBadge = findViewById(R.id.tvDistanceBadge);
+
+        // Load First Pet Name from DB if available
+        String email = dbManager.getCurrentUserEmail();
+        List<Pet> pets = dbManager.getPets(email);
+        if (pets != null && !pets.isEmpty()) {
+            selectedPetName = pets.get(0).getPetName();
+            if (tvPetNameTop != null) tvPetNameTop.setText(selectedPetName);
+            if (tvPetNameStatus != null) tvPetNameStatus.setText(selectedPetName);
         }
 
-        MaterialButton btnSaveTracking = findViewById(R.id.btnSaveTracking);
-        if (btnSaveTracking != null) {
-            btnSaveTracking.setOnClickListener(v -> saveTrackingRecord());
+        // 2. Select Pet Dropdown
+        MaterialCardView cardSelectPet = findViewById(R.id.cardSelectPet);
+        if (cardSelectPet != null) {
+            cardSelectPet.setOnClickListener(v -> showPetSelectionDialog(pets));
         }
 
-        MaterialButton btnClearTracking = findViewById(R.id.btnClearTracking);
-        if (btnClearTracking != null) {
-            btnClearTracking.setOnClickListener(v -> {
-                if (etPetName.getText() != null) etPetName.getText().clear();
-                if (etNote.getText() != null) etNote.getText().clear();
-                selectedStatus = "อยู่กับเจ้าของ";
-                statusButton.setText("สถานะ: " + selectedStatus);
-                currentLat = null;
-                currentLon = null;
-                TextView tvLoc = findViewById(R.id.tvCurrentLocation);
-                if (tvLoc != null) tvLoc.setText("📍 ยังไม่ได้อ่านตำแหน่งปัจจุบัน");
+        // 3. Recenter Map Target Button
+        MaterialCardView btnRecenterMap = findViewById(R.id.btnRecenterMap);
+        if (btnRecenterMap != null) {
+            btnRecenterMap.setOnClickListener(v -> {
+                Toast.makeText(this, "ซูมตำแหน่งของ " + selectedPetName + " (พิษณุโลก)", Toast.LENGTH_SHORT).show();
             });
         }
 
-        renderRecords();
+        // 4. Refresh Button
+        ImageView btnRefreshStatus = findViewById(R.id.btnRefreshStatus);
+        if (btnRefreshStatus != null) {
+            btnRefreshStatus.setOnClickListener(v -> refreshTrackingStatus());
+        }
+
+        // 5. Geofence Alert Switch
+        SwitchMaterial switchGeofence = findViewById(R.id.switchGeofence);
+        if (switchGeofence != null) {
+            switchGeofence.setOnCheckedChangeListener((buttonView, isChecked) -> {
+                if (isChecked) {
+                    Toast.makeText(this, "เปิดการแจ้งเตือนเมื่อออกนอกพื้นที่ 500 เมตรแล้ว", Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(this, "ปิดการแจ้งเตือนออกนอกพื้นที่", Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
+        checkLocationPermission();
     }
 
-    private void chooseStatus() {
-        String[] statuses = new String[]{
-                "อยู่กับเจ้าของ",
-                "อยู่บ้าน",
-                "กำลังเดินเล่น",
-                "อยู่ที่คลินิก / โรงพยาบาล",
-                "กำลังตามหา"
-        };
+    private void showPetSelectionDialog(List<Pet> pets) {
+        List<String> petNames = new ArrayList<>();
+        if (pets != null && !pets.isEmpty()) {
+            for (Pet p : pets) {
+                petNames.add(p.getPetName());
+            }
+        } else {
+            petNames.add("NongJ");
+            petNames.add("Sania");
+            petNames.add("Milo");
+        }
 
-        new AlertDialog.Builder(this)
-                .setTitle("เลือกสถานะสัตว์เลี้ยง")
-                .setItems(statuses, (dialog, which) -> {
-                    selectedStatus = statuses[which];
-                    if (statusButton != null) {
-                        statusButton.setText("สถานะ: " + selectedStatus);
-                    }
-                })
-                .show();
+        String[] nameArray = petNames.toArray(new String[0]);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("เลือกสัตว์เลี้ยงที่ต้องการติดตาม");
+        builder.setItems(nameArray, (dialog, which) -> {
+            selectedPetName = nameArray[which];
+            if (tvPetNameTop != null) tvPetNameTop.setText(selectedPetName);
+            if (tvPetNameStatus != null) tvPetNameStatus.setText(selectedPetName);
+            Toast.makeText(this, "กำลังติดตาม: " + selectedPetName, Toast.LENGTH_SHORT).show();
+        });
+        builder.show();
+    }
+
+    private void refreshTrackingStatus() {
+        String currentTime = new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date());
+        if (tvLastUpdated != null) {
+            tvLastUpdated.setText("อัปเดตล่าสุด " + currentTime + " น.");
+        }
+        Toast.makeText(this, "อัปเดตตำแหน่งล่าสุดเรียบร้อยแล้ว (" + currentTime + " น.)", Toast.LENGTH_SHORT).show();
     }
 
     private void checkLocationPermission() {
-        boolean fine = ContextCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-        boolean coarse = ContextCompat.checkSelfPermission(
-                this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED;
-
-        if (fine || coarse) {
-            getCurrentLocation();
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            fetchLocation();
         } else {
             requestLocationPermission.launch(new String[]{
                     Manifest.permission.ACCESS_FINE_LOCATION,
@@ -152,181 +167,13 @@ public class PetTrackingActivity extends AppCompatActivity {
         }
     }
 
-    private void getCurrentLocation() {
-        FusedLocationProviderClient client = LocationServices.getFusedLocationProviderClient(this);
+    private void fetchLocation() {
         try {
-            client.getLastLocation().addOnSuccessListener(location -> {
-                if (location != null && location.getLongitude() > 90.0) {
-                    currentLat = location.getLatitude();
-                    currentLon = location.getLongitude();
-                } else {
-                    // Fallback default coordinates to Phitsanulok City Center, Thailand
-                    currentLat = 16.8211;
-                    currentLon = 100.2659;
-                }
-                TextView tv = findViewById(R.id.tvCurrentLocation);
-                if (tv != null) {
-                    tv.setText(String.format(Locale.US, "📍 พิกัดปัจจุบัน (พิษณุโลก): %.6f, %.6f", currentLat, currentLon));
-                }
-                Toast.makeText(this, "อ่านตำแหน่งปัจจุบัน (พิษณุโลก) แล้ว", Toast.LENGTH_SHORT).show();
+            fusedLocationClient.getLastLocation().addOnSuccessListener(location -> {
+                refreshTrackingStatus();
             });
         } catch (SecurityException e) {
-            Toast.makeText(this, "ไม่สามารถเข้าถึงตำแหน่งได้", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void saveTrackingRecord() {
-        String pet = etPetName.getText() != null ? etPetName.getText().toString().trim() : "";
-        String note = etNote.getText() != null ? etNote.getText().toString().trim() : "";
-
-        if (pet.isEmpty()) {
-            etPetName.setError("กรุณากรอกชื่อสัตว์เลี้ยง");
-            etPetName.requestFocus();
-            return;
-        }
-
-        if (currentLat == null || currentLon == null) {
-            Toast.makeText(this, "กรุณากด “อ่านตำแหน่งปัจจุบัน” ก่อนบันทึก", Toast.LENGTH_LONG).show();
-            return;
-        }
-
-        String userEmail = dbManager.getCurrentUserEmail();
-
-        // OOP Model instantiation
-        PetTrackingRecord record = new PetTrackingRecord(
-                UUID.randomUUID().toString(),
-                userEmail,
-                pet,
-                selectedStatus,
-                currentLat,
-                currentLon,
-                note,
-                System.currentTimeMillis()
-        );
-
-        dbManager.addTrackingRecord(record);
-        Toast.makeText(this, "บันทึกการติดตาม " + pet + " แล้ว", Toast.LENGTH_SHORT).show();
-        if (etNote.getText() != null) etNote.getText().clear();
-        renderRecords();
-    }
-
-    private void renderRecords() {
-        if (recordsContainer == null) return;
-        recordsContainer.removeAllViews();
-
-        String email = dbManager.getCurrentUserEmail();
-        List<PetTrackingRecord> records = dbManager.getTrackingRecords(email);
-
-        if (records.isEmpty()) {
-            TextView empty = new TextView(this);
-            empty.setText("ยังไม่มีประวัติการติดตาม\nกรอกชื่อสัตว์เลี้ยง → อ่าน GPS → บันทึก");
-            empty.setTextSize(14f);
-            empty.setTextColor(0xFF607D8B);
-            empty.setPadding(8, 16, 8, 16);
-            recordsContainer.addView(empty);
-            return;
-        }
-
-        for (PetTrackingRecord obj : records) {
-            MaterialCardView card = new MaterialCardView(this);
-            card.setRadius(18f);
-            card.setCardElevation(3f);
-            card.setStrokeWidth(1);
-            card.setStrokeColor(0xFFD6E5F0);
-            card.setContentPadding(18, 16, 18, 16);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                    LinearLayout.LayoutParams.MATCH_PARENT,
-                    LinearLayout.LayoutParams.WRAP_CONTENT
-            );
-            lp.bottomMargin = 12;
-            card.setLayoutParams(lp);
-
-            LinearLayout box = new LinearLayout(this);
-            box.setOrientation(LinearLayout.VERTICAL);
-
-            TextView pet = new TextView(this);
-            pet.setText("🐾 " + (obj.getPetName() != null ? obj.getPetName() : "-"));
-            pet.setTextSize(18f);
-            pet.setTextColor(0xFF01579B);
-            pet.setTypeface(null, Typeface.BOLD);
-
-            TextView status = new TextView(this);
-            status.setText("สถานะ: " + (obj.getStatus() != null ? obj.getStatus() : "-"));
-            status.setTextSize(14f);
-            status.setTextColor(0xFF263238);
-            status.setPadding(0, 6, 0, 0);
-
-            TextView time = new TextView(this);
-            Date date = new Date(obj.getTimestamp());
-            SimpleDateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault());
-            time.setText("🕐 " + format.format(date));
-            time.setTextSize(13f);
-            time.setTextColor(0xFF607D8B);
-            time.setPadding(0, 4, 0, 0);
-
-            TextView location = new TextView(this);
-            location.setText(String.format(Locale.US, "📍 %.6f, %.6f", obj.getLatitude(), obj.getLongitude()));
-            location.setTextSize(13f);
-            location.setTextColor(0xFF455A64);
-            location.setPadding(0, 4, 0, 0);
-
-            TextView note = new TextView(this);
-            String noteVal = obj.getNote();
-            note.setText((noteVal == null || noteVal.isEmpty()) ? "หมายเหตุ: -" : "หมายเหตุ: " + noteVal);
-            note.setTextSize(13f);
-            note.setTextColor(0xFF607D8B);
-            note.setPadding(0, 4, 0, 0);
-
-            LinearLayout buttons = new LinearLayout(this);
-            buttons.setOrientation(LinearLayout.HORIZONTAL);
-            buttons.setPadding(0, 10, 0, 0);
-
-            MaterialButton mapButton = new MaterialButton(this);
-            mapButton.setText("🗺 เปิดแผนที่");
-            LinearLayout.LayoutParams btnLp = new LinearLayout.LayoutParams(0, 48, 1f);
-            btnLp.setMarginEnd(6);
-            mapButton.setLayoutParams(btnLp);
-            mapButton.setOnClickListener(v -> {
-                double lat = obj.getLatitude();
-                double lon = obj.getLongitude();
-                Uri uri = Uri.parse("geo:" + lat + "," + lon + "?q=" + lat + "," + lon);
-                try {
-                    startActivity(new Intent(Intent.ACTION_VIEW, uri));
-                } catch (Exception e) {
-                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/maps/search/?api=1&query=" + lat + "," + lon)));
-                }
-            });
-
-            MaterialButton deleteButton = new MaterialButton(this);
-            deleteButton.setText("🗑 ลบ");
-            LinearLayout.LayoutParams delLp = new LinearLayout.LayoutParams(0, 48, 0.55f);
-            delLp.setMarginStart(6);
-            deleteButton.setLayoutParams(delLp);
-            deleteButton.setTextColor(0xFFC62828);
-            deleteButton.setOnClickListener(v -> {
-                new AlertDialog.Builder(this)
-                        .setTitle("ลบประวัติการติดตาม?")
-                        .setMessage("รายการนี้จะถูกลบออกจากฐานข้อมูลเครื่อง")
-                        .setNegativeButton("ยกเลิก", null)
-                        .setPositiveButton("ลบ", (dialog, which) -> {
-                            dbManager.deleteTrackingRecord(obj.getId());
-                            Toast.makeText(PetTrackingActivity.this, "ลบประวัติแล้ว", Toast.LENGTH_SHORT).show();
-                            renderRecords();
-                        })
-                        .show();
-            });
-
-            buttons.addView(mapButton);
-            buttons.addView(deleteButton);
-
-            box.addView(pet);
-            box.addView(status);
-            box.addView(time);
-            box.addView(location);
-            box.addView(note);
-            box.addView(buttons);
-            card.addView(box);
-            recordsContainer.addView(card);
+            e.printStackTrace();
         }
     }
 }

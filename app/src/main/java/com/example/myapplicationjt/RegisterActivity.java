@@ -1,5 +1,6 @@
 package com.example.myapplicationjt;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 
@@ -51,12 +52,16 @@ public class RegisterActivity extends AppCompatActivity {
             String password = etPassword.getText() != null ? etPassword.getText().toString().trim() : "";
 
             if (!name.isEmpty() && !email.isEmpty() && !password.isEmpty()) {
-                // OOP User entity creation
-                User newUser = new User(UUID.randomUUID().toString(), name, email, password);
+                String cleanEmail = email.trim().toLowerCase();
+                User newUser = new User(UUID.randomUUID().toString(), name, cleanEmail, password);
 
                 boolean success = dbManager.registerUser(newUser);
                 if (success) {
-                    Toast.makeText(this, "สร้างบัญชีสำเร็จ! กรุณาเข้าสู่ระบบ", Toast.LENGTH_LONG).show();
+                    dbManager.switchUserSession(cleanEmail);
+                    Toast.makeText(this, "สมัครสมาชิกสำเร็จ! ยินดีต้อนรับคุณ " + name, Toast.LENGTH_LONG).show();
+                    Intent intent = new Intent(this, MainActivity.class);
+                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                    startActivity(intent);
                     finish();
                 } else {
                     Toast.makeText(this, "อีเมลนี้มีอยู่ในระบบแล้ว กรุณาใช้อีเมลอื่น", Toast.LENGTH_SHORT).show();

@@ -68,17 +68,20 @@
 
                     <!-- Step 1 -->
                     <LinearLayout
+                        android:id="@+id/step1Layout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <TextView
+                            android:id="@+id/tvStep1Num"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
-                            android:background="@drawable/ic_launcher_background"
-                            android:backgroundTint="#1E88E5"
+                            android:background="@drawable/circle_blue_active"
                             android:gravity="center"
                             android:text="1"
                             android:textColor="#FFFFFF"
@@ -86,6 +89,7 @@
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tvStep1Label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
@@ -97,105 +101,129 @@
 
                     <!-- Step 2 -->
                     <LinearLayout
+                        android:id="@+id/step2Layout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <TextView
+                            android:id="@+id/tvStep2Num"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
+                            android:background="@drawable/circle_grey_inactive"
                             android:gravity="center"
                             android:text="2"
-                            android:textColor="#1E88E5"
+                            android:textColor="#78909C"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tvStep2Label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="เลือกโรงพยาบาล"
-                            android:textColor="#546E7A"
+                            android:textColor="#78909C"
                             android:textSize="10sp" />
                     </LinearLayout>
 
                     <!-- Step 3 -->
                     <LinearLayout
+                        android:id="@+id/step3Layout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <TextView
+                            android:id="@+id/tvStep3Num"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
+                            android:background="@drawable/circle_grey_inactive"
                             android:gravity="center"
                             android:text="3"
-                            android:textColor="#1E88E5"
+                            android:textColor="#78909C"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tvStep3Label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="เลือกบริการ"
-                            android:textColor="#546E7A"
+                            android:textColor="#78909C"
                             android:textSize="10sp" />
                     </LinearLayout>
 
                     <!-- Step 4 -->
                     <LinearLayout
+                        android:id="@+id/step4Layout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <TextView
+                            android:id="@+id/tvStep4Num"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
+                            android:background="@drawable/circle_grey_inactive"
                             android:gravity="center"
                             android:text="4"
-                            android:textColor="#1E88E5"
+                            android:textColor="#78909C"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tvStep4Label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="เลือกวันที่"
-                            android:textColor="#546E7A"
+                            android:textColor="#78909C"
                             android:textSize="10sp" />
                     </LinearLayout>
 
                     <!-- Step 5 -->
                     <LinearLayout
+                        android:id="@+id/step5Layout"
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:orientation="vertical">
+                        android:orientation="vertical"
+                        android:clickable="true"
+                        android:focusable="true">
 
                         <TextView
+                            android:id="@+id/tvStep5Num"
                             android:layout_width="32dp"
                             android:layout_height="32dp"
+                            android:background="@drawable/circle_grey_inactive"
                             android:gravity="center"
                             android:text="5"
-                            android:textColor="#1E88E5"
+                            android:textColor="#78909C"
                             android:textSize="14sp"
                             android:textStyle="bold" />
 
                         <TextView
+                            android:id="@+id/tvStep5Label"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
                             android:text="ยืนยัน"
-                            android:textColor="#546E7A"
+                            android:textColor="#78909C"
                             android:textSize="10sp" />
                     </LinearLayout>
                 </LinearLayout>
